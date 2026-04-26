@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoGymi Database ERD</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #fff;
+      color: #3d3d3a;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a18; color: #c2c0b6; }
+    }
+    h1 { font-size: 20px; font-weight: 500; margin: 0 0 8px; }
+    p { font-size: 13px; color: #73726c; margin: 0 0 20px; }
+    #erd svg { max-width: 100%; }
+  </style>
+</head>
+<body>
+  <h1>GoGymi database — entity relationship diagram</h1>
+  <p>Foreign key relationships across all 15 tables.</p>
+  <div id="erd"></div>
+  <script type="module">
+    import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'base',
+      fontFamily: 'sans-serif',
+      themeVariables: {
+        darkMode: dark,
+        fontSize: '13px',
+        fontFamily: 'sans-serif',
+        lineColor: dark ? '#9c9a92' : '#73726c',
+        textColor: dark ? '#c2c0b6' : '#3d3d3a',
+      },
+    });
+
+    const diagram = `erDiagram
+  students {
+    int user_id PK
+    int group_id
+    int creation_time
+    string study_id
+  }
+  teachers {
+    int user_id PK
+    int group_id
+    int creation_time
+  }
+  course_ids {
+    int post_id PK
+    string url
+    string post_type
+    int course_id
+  }
+  comments {
+    int comment_ID PK
+    int timestamp
+    int user_id FK
+    int post_id FK
+    int parent
+  }
+  pageviews {
+    int id PK
+    string url
+    int user_id FK
+    datetime created_at
+  }
+  gymitrainer {
+    int id PK
+    int user_id FK
+    string url
+    int startTime
+    json content
+  }
+  gymitrainer_feedback {
+    int id PK
+    int thread_id FK
+    int score
+    string comment
+  }
+  essay_results {
+    int result_id PK
+    int user_id FK
+    int course FK
+    string text_type
+    int time
+  }
+  essay_feedback {
+    int result_id FK
+    int feedback_rating
+    string feedback_text
+    string teacher_grade
+  }
+  text_results {
+    int session_id PK
+    int user_id FK
+    int course_id FK
+    int exam_id
+    string question_id FK
+    float points
+  }
+  text_questions {
+    string question_id PK
+    int exam_id
+    int course_id FK
+    string type
+    int max_points
+  }
+  math_results {
+    int session_id PK
+    int user_id FK
+    int question_id FK
+    float points
+    int timestamp
+  }
+  math_questions {
+    int question_id PK
+    int course_id FK
+    int year
+    string tags
+  }
+  quiz_results {
+    int session_id PK
+    int user_id FK
+    int course_id FK
+    int quiz_id
+    int question_id FK
+    float points
+  }
+  quiz_questions {
+    int question_id PK
+    int exam_id
+    json metadata
+    int points
+  }
+
+  students ||--o{ comments : "user_id"
+  students ||--o{ pageviews : "user_id"
+  students ||--o{ gymitrainer : "user_id"
+  students ||--o{ essay_results : "user_id"
+  students ||--o{ text_results : "user_id"
+  students ||--o{ math_results : "user_id"
+  students ||--o{ quiz_results : "user_id"
+
+  course_ids ||--o{ comments : "post_id"
+  course_ids ||--o{ essay_results : "course_id"
+  course_ids ||--o{ text_results : "course_id"
+  course_ids ||--o{ text_questions : "course_id"
+  course_ids ||--o{ quiz_results : "course_id"
+
+  gymitrainer ||--o{ gymitrainer_feedback : "thread_id"
+  essay_results ||--o| essay_feedback : "result_id"
+  text_questions ||--o{ text_results : "question_id"
+  math_questions ||--o{ math_results : "question_id"
+  quiz_questions ||--o{ quiz_results : "question_id"
+`;
+
+    const { svg } = await mermaid.render('erd-svg', diagram);
+    document.getElementById('erd').innerHTML = svg;
+
+    document.querySelectorAll('#erd svg .node').forEach(node => {
+      const firstPath = node.querySelector('path[d]');
+      if (!firstPath) return;
+      const d = firstPath.getAttribute('d');
+      const nums = d.match(/-?[\d.]+/g)?.map(Number);
+      if (!nums || nums.length < 8) return;
+      const xs = [nums[0], nums[2], nums[4], nums[6]];
+      const ys = [nums[1], nums[3], nums[5], nums[7]];
+      const x = Math.min(...xs), y = Math.min(...ys);
+      const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x); rect.setAttribute('y', y);
+      rect.setAttribute('width', w); rect.setAttribute('height', h);
+      rect.setAttribute('rx', '8');
+      for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
+        if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+      }
+      firstPath.replaceWith(rect);
+    });
+
+    document.querySelectorAll('#erd svg .row-rect-odd path, #erd svg .row-rect-even path').forEach(p => {
+      p.setAttribute('stroke', 'none');
+    });
+  </script>
+</body>
+</html>
